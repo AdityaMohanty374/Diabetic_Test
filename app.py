@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from pydantic import BaseModel
 import numpy as np
 import torch
 import torch.nn as nn
@@ -19,15 +20,20 @@ class NeuralNet(nn.Module):
         out = self.layer3(out)
         return out
 
+# Load model + scaler
 n_features = 8
 model = NeuralNet(n_features)
-model.load_state_dict(torch.load("diabetes_model.pth"))
+model.load_state_dict(torch.load("diabetes_model.pth", map_location=torch.device("cpu")))
 model.eval()
 sc = joblib.load("scaler.save")
 
+# Request schema
+class InputData(BaseModel):
+    data: list
+
 @app.post("/predict")
-def predict(data: list):
-    arr = np.array([data])
+def predict(input: InputData):
+    arr = np.array([input.data])
     arr_scaled = sc.transform(arr)
     tensor = torch.from_numpy(arr_scaled.astype(np.float32))
     with torch.no_grad():
